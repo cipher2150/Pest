@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Keepalive Pinger</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
+  h1 { font-size: 1.4rem; }
+  form { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+  input[type=url] { flex: 1; padding: 0.5rem; font-size: 1rem; }
+  button { padding: 0.5rem 1rem; font-size: 1rem; cursor: pointer; }
+  ul { list-style: none; padding: 0; }
+  li { padding: 0.6rem 0; border-bottom: 1px solid #ddd; }
+  .status-ok { color: #1a7f37; }
+  .status-bad { color: #cf222e; }
+  #error { color: #cf222e; min-height: 1.2em; }
+  #self { color: #666; font-size: 0.9rem; margin-bottom: 1rem; }
+</style>
+</head>
+<body>
+<h1>Keepalive Pinger</h1>
+<p id="self"></p>
+<form id="add-form">
+  <input type="url" id="url-input" placeholder="https://your-app.onrender.com" required>
+  <button type="submit">Add link</button>
+</form>
+<p id="error"></p>
+<ul id="link-list"></ul>
+
+<script>
+async function loadLinks() {
+  const res = await fetch('/api/links');
+  const data = await res.json();
+  document.getElementById('self').textContent = data.selfUrl
+    ? `This service pings itself automatically at ${data.selfUrl}`
+    : '';
+  const list = document.getElementById('link-list');
+  list.innerHTML = '';
+  for (const link of data.links) {
+    const li = document.createElement('li');
+
+    const strong = document.createElement('strong');
+    strong.textContent = link.url; // textContent, not innerHTML: link.url is user-submitted
+    li.append(strong, document.createElement('br'));
+    li.append(` added ${new Date(link.addedAt).toLocaleString()} — `);
+
+    const statusSpan = document.createElement('span');
+    statusSpan.className = link.lastStatus === 'ok' ? 'status-ok' : (link.lastStatus ? 'status-bad' : '');
+    statusSpan.textContent = link.lastStatus ? `last ping: ${link.lastStatus}` : 'not pinged yet';
+    if (link.lastLatencyMs != null) statusSpan.textContent += ` (${link.lastLatencyMs}ms)`;
+    li.append(statusSpan);
+
+    list.appendChild(li);
+  }
+}
+
+document.getElementById('add-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const input = document.getElementById('url-input');
+  const errorEl = document.getElementById('error');
+  errorEl.textContent = '';
+  const res = await fetch('/api/links', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url: input.value.trim() }),
+  });
+  if (res.ok) {
+    input.value = '';
+    loadLinks();
+  } else {
+    const data = await res.json().catch(() => ({}));
+    errorEl.textContent = data.error || 'failed to add link';
+  }
+});
+
+loadLinks();
+setInterval(loadLinks, 30000);
+</script>
+</body>
+</html>
