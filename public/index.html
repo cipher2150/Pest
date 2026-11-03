@@ -123,6 +123,25 @@
   .meta { color: #8a7c6c; font-size: 0.8rem; white-space: nowrap; }
   .status-ok { color: #2f8a4b; font-weight: 600; }
   .status-bad { color: #c0392b; font-weight: 600; }
+
+  #toast {
+    position: fixed;
+    left: 50%;
+    bottom: 2rem;
+    transform: translate(-50%, 1rem);
+    background: #2f8a4b;
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.95rem;
+    padding: 0.7rem 1.2rem;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    z-index: 2;
+  }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); }
 </style>
 </head>
 <body>
@@ -142,6 +161,8 @@
     <ul id="link-list"></ul>
   </div>
 </div>
+
+<div id="toast" role="status"></div>
 
 <script>
 // --- decorative butterflies ---
@@ -165,6 +186,16 @@ for (let i = 0; i < BUTTERFLY_COUNT; i++) {
   img.alt = '';
   b.appendChild(img);
   sky.appendChild(b);
+}
+
+// --- toast ---
+let toastTimer;
+function showToast(message) {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
 }
 
 // --- link list (app logic) ---
@@ -213,6 +244,7 @@ document.getElementById('add-form').addEventListener('submit', async (e) => {
   if (res.ok) {
     input.value = '';
     loadLinks();
+    showToast('Link added successfully');
   } else {
     const data = await res.json().catch(() => ({}));
     errorEl.textContent = data.error || 'failed to add link';
